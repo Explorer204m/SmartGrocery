@@ -229,25 +229,38 @@
             return JSON.parse(text);
         }
 
-        // ---------------- IMAGE UPLOAD FLOW ----------------
+                // ---------------- IMAGE UPLOAD FLOW ----------------
         async function handleReceiptUpload(file) {
-            const compressed = await compressImage(file);
-            const base64 = await toBase64(compressed);
+            try {
+                if (!file) {
+                    showAlert("No file selected");
+                    return;
+                }
 
-            const extractedItems = await scanReceipt(base64);
+                showAlert("Processing receipt...");
+                
+                const compressed = await compressImage(file);
+                const base64 = await toBase64(compressed);
 
-            const cleaned = extractedItems.map(i => ({
-                name: i.name || "Unknown",
-                price: Number(i.price) || 0,
-                category: i.category || "Other",
-                expiration: i.expiration || null,
-                instock: true,
-                createdate: new Date().toISOString()
-            }));
+                const extractedItems = await scanReceipt(base64);
 
-            await supabaseServer.from("items").insert(cleaned);
+                const cleaned = extractedItems.map(i => ({
+                    name: i.name || "Unknown",
+                    price: Number(i.price) || 0,
+                    category: i.category || "Other",
+                    expiration: i.expiration || null,
+                    instock: true,
+                    createdate: new Date().toISOString()
+                }));
 
-            await loadItems();
+                await supabaseServer.from("items").insert(cleaned);
+
+                await loadItems();
+                showAlert("Receipt added successfully!");
+            } catch (error) {
+                console.error("Receipt upload error:", error);
+                showAlert("Error: " + error.message);
+            }
         }
 
         // ---------------- BASE64 ----------------
