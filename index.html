@@ -145,7 +145,7 @@
     <!-- SHOPPING LIST -->
     <div id="list" class="tab">
         <input id="listItem" placeholder="Add grocery item">
-        <button onclick="addToList(getElementById())">Add to List</button>
+        <button onclick="addToList()">Add to List</button>
 
         <h3>🛒 Your List</h3>
         <div id="shoppingList"></div>
@@ -191,6 +191,11 @@
 
         // ---------------- GEMINI ----------------
         async function scanReceipt(imageBase64) {
+            const controller = new AbortController();
+
+            // cancel request after 15 seconds
+            setTimeout(() => controller.abort(), 15000);
+
             const res = await fetch(
                 "https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan",
                 {
@@ -198,13 +203,26 @@
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({imageBase64})
+                    body: JSON.stringify({ imageBase64 }),
+                    signal: controller.signal
                 }
             );
 
-            const data = await res.json();
+            if (!res.ok) {
+                const text = await res.text();
+                console.error("Edge Function error:", text);
+                throw new Error("Scan failed");
+            }
 
-            let text = data.candidates[0].content.parts[0].text;
+            const data = await res.json();
+            console.log("Gemini RAW:", data);
+
+            let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) {
+                throw new Error("Invalid Gemini response");
+            }
+
             text = text.replace(/```json|```/g, "").trim();
 
             return JSON.parse(text);
@@ -217,7 +235,16 @@
 
             const extractedItems = await scanReceipt(base64);
 
-            await supabaseServer.from("items").insert(extractedItems);
+            const cleaned = extractedItems.map(i => ({
+                name: i.name || "Unknown",
+                price: Number(i.price) || 0,
+                category: i.category || "Other",
+                expiration: i.expiration || null,
+                instock: true,
+                createdate: new Date().toISOString()
+            }));
+
+            await supabaseServer.from("items").insert(cleaned);
 
             await loadItems();
         }
@@ -319,7 +346,7 @@
         async function markRemoved(name) {
             await supabaseServer
                 .from("items")
-                .update({ inStock: false })
+                .update({ instock: false })
                 .eq("name", name);
 
             await loadItems();
