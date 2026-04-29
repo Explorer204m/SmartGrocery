@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cartly</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Favicon (browser tab) -->
+    <link rel="icon" type="image/png" href="Cartly_Tab_V1.png">
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- iOS home screen icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="Cartly_Homepage_V1.png">
+
+    <!-- Android / PWA icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="Cartly_Homepage_V1.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="Cartly_Homepage_V1.png">
+
+    <!-- Theme color -->
+    <meta name="theme-color" content="#ffffff">
+
+    <style>
+        body {
+            background: #fafafa;
+            font-family: Arial;
+            padding: 12px;
+            margin: 0;
+            max-width: 700px;
+        }
+
+        input, button, select {
+            padding: 14px;
+            margin: 6px 0;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .item {
+            border-bottom: 1px solid #ccc;
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 600px) {
+            .item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tabs button {
+            flex: 1;
+        }
+
+        .tab { display: none; }
+        .active { display: block; }
+
+        .in-pantry {
+            background: #ff9797;
+            border-left: 4px solid red;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+    
+<body>
+
+    <h2>Cartly</h2>
+
+    <div id="alertBox"></div>
+
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h3>Add Item</h3>
+
+            <input id="modalName" placeholder="Item name">
+            <input id="modalPrice" type="number" placeholder="Price">
+
+            <select id="modalCategory">
+                <option>Groceries</option>
+                <option>Snacks</option>
+                <option>Other</option>
+            </select>
+
+            <input id="modalExpiration" type="date">
+            <button onclick="submitModalItem()">Add</button>
+            <button onclick="closeAddPopup()">Cancel</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button onclick="showTab('tracker')">Tracker</button>
+        <button onclick="showTab('graph')">Graph</button>
+        <button onclick="showTab('list')">Shopping List</button>
+    </div>
+
+    <!-- TRACKER -->
+    <div id="tracker" class="tab active">
+
+        <!-- Receipt scan -->
+        <input type="file" accept="image/*" onchange="handleReceiptUpload(this.files[0])">
+        <button onclick="openAddPopup()">Add Manual</button>
+
+        <h3>Items</h3>
+        <div id="listDisplay"></div>
+
+        <h3>💰 Total: $<span id="total">0</span></h3>
+    </div>
+
+    <!-- GRAPH -->
+    <div id="graph" class="tab">
+        <canvas id="chart"></canvas>
+    </div>
+
+    <!-- SHOPPING LIST -->
+    <div id="list" class="tab">
+        <input id="listItem" placeholder="Add grocery item">
+        <button onclick="addToList(getElementById())">Add to List</button>
+
+        <h3>🛒 Your List</h3>
+        <div id="shoppingList"></div>
+    </div>
+
+
+    <script>
+        let items = [];
+        let shoppingList = [];
+        let chartInstance = null;
+        let categories = [];
+
+        const supabaseServer = supabase.createClient(
+            "https://mfcozmfhbyfjtyereqgg.supabase.co",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mY296bWZoYnlmanR5ZXJlcWdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MTk2OTcsImV4cCI6MjA5Mjk5NTY5N30.wY9WR1fpWSIt_ad9Zs_XzAcKB7cCROVIt7ZJTD6Lgv0"
+        );
+
+        // ---------------- ALERT ----------------
+        function showAlert(msg) {
+            const box = document.getElementById("alertBox");
+            box.innerText = msg;
+            box.style.display = "block";
+
+            setTimeout(() => {
+                box.style.display = "none";
+            }, 3000);
+        }
+
+        // ---------------- LOAD ITEMS ----------------
+        async function loadItems() {
+            const { data, error } = await supabaseServer
+                .from("items")
+                .select("*");
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            items = data || [];
+            render();
+        }
+
+        // ---------------- GEMINI ----------------
+        async function scanReceipt(imageBase64) {
+            const res = await fetch(
+                "https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({imageBase64})
+                }
+            );
+
+            const data = await res.json();
+
+            let text = data.candidates[0].content.parts[0].text;
+            text = text.replace(/```json|```/g, "").trim();
+
+            return JSON.parse(text);
+        }
+
+        // ---------------- IMAGE UPLOAD FLOW ----------------
+        async function handleReceiptUpload(file) {
+            const compressed = await compressImage(file);
+            const base64 = await toBase64(compressed);
+
+            const extractedItems = await scanReceipt(base64);
+
+            await supabaseServer.from("items").insert(extractedItems);
+
+            await loadItems();
+        }
+
+        // ---------------- BASE64 ----------------
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = () => {
+                    resolve(reader.result.split(",")[1]);
+                };
+
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ---------------- IMAGE COMPRESS ----------------
+        async function compressImage(file) {
+            const quality = 0.7;
+
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+
+                    const maxWidth = 1000;
+                    const scale = Math.min(maxWidth / img.width, 1);
+
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob(blob => {
+                        if (!blob) return reject("Compression failed");
+                        resolve(blob);
+                    }, "image/jpeg", quality);
+                };
+
+                img.onerror = reject;
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        // ---------------- ADD ITEM ----------------
+        async function addItem(item) {
+            const { data, error } = await supabaseServer
+                .from("items")
+                .insert([{
+                    name: item.name,
+                    price: item.price,
+                    category: item.category,
+                    expiration: item.expiration || null,
+                    instock: true,
+                    createdate: new Date().toISOString()
+                }])
+                .select();
+
+            if (error) {
+                console.error("Insert error:", error);
+                return;
+            }
+
+            console.log("Inserted row:", data);
+            await loadItems();
+        }
+
+        async function submitModalItem() {
+            const name = document.getElementById("modalName").value.trim();
+            const price = parseFloat(document.getElementById("modalPrice").value);
+            const category = document.getElementById("modalCategory").value;
+            const expiration = document.getElementById("modalExpiration").value;
+
+            if (!name || isNaN(price)) {
+                showAlert("Fill all fields");
+                return;
+            }
+
+            await addItem({
+                name,
+                price,
+                category,
+                expiration: expiration || null
+            });
+
+            document.getElementById("modalName").value = "";
+            document.getElementById("modalPrice").value = "";
+            document.getElementById("modalExpiration").value = "";
+
+            closeAddPopup();
+            render();
+        }
+
+        // ---------------- REMOVE / MARK ----------------
+        async function markRemoved(name) {
+            await supabaseServer
+                .from("items")
+                .update({ inStock: false })
+                .eq("name", name);
+
+            await loadItems();
+        }
+
+        // ---------------- SHOPPING LIST ----------------
+        async function addToList(name) {
+            if (!name) {
+                const el = document.getElementById("listItem");
+                name = (el.value || "").trim();
+                if (!name) return showAlert("Enter item");
+                el.value = "";
+            }
+
+            shoppingList.push(name);
+            renderList();
+        }
+
+        async function removeFromList(name) {
+            shoppingList = shoppingList.filter(i => i.toLowerCase() !== name.toLowerCase());
+            renderList();
+        }
+
+        // ---------------- RENDER ITEMS ----------------
+        function render() {
+            const list = document.getElementById("listDisplay");
+            const totalEl = document.getElementById("total");
+
+            list.innerHTML = "";
+            let total = 0;
+
+            items.forEach(i => {
+                total += Number(i.price) || 0;
+
+                list.innerHTML += `
+                    <div class="item">
+                        <div>${i.name} - $${i.price} (${i.category})</div>
+                    </div>
+                `;
+            });
+
+            totalEl.innerText = total.toFixed(2);
+        }
+
+        function openAddPopup() {
+            document.getElementById("addModal").style.display = "flex";
+        }
+        function closeAddPopup() {
+            document.getElementById("addModal").style.display = "none";
+        }
+
+        // ---------------- SHOPPING LIST RENDER ----------------
+        function renderList() {
+            const listDiv = document.getElementById("shoppingList");
+            listDiv.innerHTML = "";
+
+            shoppingList.forEach(item => {
+                listDiv.innerHTML += `
+                    <div class="item">
+                        <div>${item}</div>
+                        <button onclick="removeFromList('${item}')">Remove</button>
+                    </div>
+                `;
+            });
+        }
+
+        // ---------------- CHART ----------------
+        function renderChart() {
+            const ctx = document.getElementById("chart").getContext("2d");
+
+            const totals = {};
+
+            items.forEach(i => {
+                totals[i.category] = (totals[i.category] || 0) + Number(i.price);
+            });
+
+            if (window.chartInstance) window.chartInstance.destroy();
+
+            window.chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: Object.keys(totals),
+                    datasets: [{
+                        label: "Spending",
+                        data: Object.values(totals)
+                    }]
+                }
+            });
+        }
+        // ---------------- INIT (FIXED) ----------------
+        window.onload = async () => {
+            await loadItems();
+        };
+    </script>
+
+</body>
+</html>
