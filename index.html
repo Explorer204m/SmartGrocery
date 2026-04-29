@@ -418,6 +418,11 @@
         function closeAddPopup() {
             document.getElementById("addModal").style.display = "none";
         }
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll(".tab");
+            tabs.forEach(tab => tab.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+        }
 
         // ---------------- SHOPPING LIST RENDER ----------------
         function renderList() {
@@ -441,7 +446,9 @@
             const totals = {};
 
             items.forEach(i => {
-                totals[i.category] = (totals[i.category] || 0) + Number(i.price);
+                if (i.instock) {
+                    totals[i.category] = (totals[i.category] || 0) + Number(i.price);
+                }
             });
 
             if (window.chartInstance) window.chartInstance.destroy();
