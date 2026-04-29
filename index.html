@@ -197,18 +197,17 @@
             // cancel request after 15 seconds
             setTimeout(() => controller.abort(), 15000);
 
-            const res = await fetch(
-                "https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "apikey": SUPABASE_ANON_KEY,
-                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                    },
-                    body: JSON.stringify({ imageBase64 })
-                }
-            );
+            fetch("https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    imageBase64: base64Image
+                })
+            });
 
             if (!res.ok) {
                 const text = await res.text();
