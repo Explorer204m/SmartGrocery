@@ -393,16 +393,23 @@
             let total = 0;
 
             items.forEach(i => {
-                total += Number(i.price) || 0;
+                if (i.instock) {
+                    total += Number(i.price) || 0;
 
-                list.innerHTML += `
-                    <div class="item">
-                        <div>${i.name} - $${i.price} (${i.category})</div>
-                    </div>
-                `;
+                    list.innerHTML += `
+                        <div class="item">
+                            <div>
+                                <strong>${i.name}</strong> - $${i.price} (${i.category})
+                                ${i.expiration ? `<br><small>Expires: ${i.expiration}</small>` : ""}
+                            </div>
+                            <button onclick="markRemoved('${i.name}')">Remove</button>
+                        </div>
+                    `;
+                }
             });
 
             totalEl.innerText = total.toFixed(2);
+            renderChart();
         }
 
         function openAddPopup() {
