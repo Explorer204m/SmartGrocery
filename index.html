@@ -56,6 +56,12 @@
             margin: 0;
         }
 
+        .tracker-item {
+            background: #ffe6e6;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
         @media (max-width: 600px) {
             .item {
                 flex-direction: column;
@@ -381,6 +387,18 @@
                 el.value = "";
             }
 
+            // Check if item already exists in purchased items within expiration
+            const existingItem = items.find(i => 
+                i.instock && 
+                i.name.toLowerCase() === name.toLowerCase() &&
+                (!i.expiration || new Date(i.expiration) > new Date())
+            );
+
+            if (existingItem) {
+                showAlert(`"${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
+                return;
+            }
+
             shoppingList.push(name);
             renderList();
         }
@@ -403,12 +421,11 @@
                     total += Number(i.price) || 0;
 
                     list.innerHTML += `
-                        <div class="item">
+                        <div class="item tracker-item">
                             <div>
                                 <strong>${i.name}</strong> - $${i.price} (${i.category})
                                 ${i.expiration ? `<br><small>Expires: ${i.expiration}</small>` : ""}
                             </div>
-                            <button onclick="markRemoved('${i.name}')">Remove</button>
                         </div>
                     `;
                 }
@@ -470,6 +487,7 @@
                 }
             });
         }
+
         // ---------------- INIT (FIXED) ----------------
         window.onload = async () => {
             await loadItems();
