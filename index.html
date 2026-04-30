@@ -469,14 +469,8 @@
                 .update({ instock: false })
                 .eq("name", name);
 
-            shoppingList = shoppingList.filter(i => {
-                const itemName = typeof i === "string" ? i : i.name;
-                return itemName.toLowerCase() !== name.toLowerCase();
-            });
-
             showAlert(`✓ "${name}" marked as ran out`);
-            await loadItems();
-            renderList();
+            await loadItems(); // refresh pantry only
         }
 
         // ---------------- RENDER ITEMS ----------------
@@ -496,6 +490,12 @@
                             <div>
                                 <strong>${i.name}</strong> - $${i.price} (${i.category})
                             </div>
+                        </div>
+                    `;
+                } else {
+                    list.innerHTML += `
+                        <div class="item tracker-item" style="opacity:0.5">
+                            <div><s>${i.name}</s> (Out of stock)</div>
                         </div>
                     `;
                 }
