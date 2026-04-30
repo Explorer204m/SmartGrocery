@@ -119,6 +119,111 @@
             border-radius: 4px;
             margin-bottom: 10px;
         }
+
+        .item-card {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .item-price {
+            font-weight: 600;
+            color: #2e7d32;
+        }
+
+        .bottom-row {
+            margin-top: 4px;
+            font-size: 13px;
+            color: #777;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            border-top: 1px solid #ddd;
+            padding: 6px 0;
+            box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+        }
+
+        .bottom-nav button {
+            flex: 1;
+            background: none;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 14px;
+            color: #777;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .bottom-nav button span {
+            font-size: 11px;
+        }
+
+        .bottom-nav button.active {
+            color: #2e7d32;
+            font-weight: 600;
+            border: 2px solid #2e7d32;
+            border-radius: 8px;
+        }
+
+        body {
+            padding-bottom: 80px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border: 2px dashed #2e7d32;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #2e7d32;
+            transition: all 0.2s;
+        }
+
+        .file-input-label:hover {
+            background: #f0f8f0;
+            border-color: #1b5e20;
+        }
+
+        .file-input-label:active {
+            transform: scale(0.98);
+        }
+
+        #receiptInput {
+            display: none;
+        }
     </style>
 </head>
     
@@ -147,18 +252,16 @@
         </div>
     </div>
 
-    <div class="tabs">
-        <button onclick="showTab('tracker')">Tracker</button>
-        <button onclick="showTab('graph')">Graph</button>
-        <button onclick="showTab('list')">Shopping List</button>
-    </div>
-
     <!-- TRACKER -->
     <div id="tracker" class="tab active">
+        <label class="file-input-wrapper">
+            <div class="file-input-label">
+                📸 Tap to take photo or upload receipt
+            </div>
+            <input id="receiptInput" type="file" accept="image/*" capture="environment" onchange="handleReceiptUpload(this.files[0])">
+        </label>
 
-        <!-- Receipt scan -->
-        <input type="file" accept="image/*" onchange="handleReceiptUpload(this.files[0])">
-        <button onclick="openAddPopup()">Add Manual</button>
+        <button onclick="openAddPopup()">✏️ Add Manual</button>
 
         <h3>Items</h3>
         <div id="listDisplay"></div>
@@ -180,6 +283,20 @@
         <div id="shoppingList"></div>
     </div>
 
+    <div class="bottom-nav">
+        <button onclick="showTab('tracker')" id="tab-tracker" class="active">
+            📦
+            <span>Tracker</span>
+        </button>
+        <button onclick="showTab('graph')" id="tab-graph">
+            📊
+            <span>Graph</span>
+        </button>
+        <button onclick="showTab('list')" id="tab-list">
+            🛒
+            <span>List</span>
+        </button>
+    </div>
 
     <script>
         let items = [];
@@ -470,6 +587,16 @@
         }
 
         // ---------------- RENDER ITEMS ----------------
+        function formatDate(dateStr) {
+            if (!dateStr) return "N/A";
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+        }
+
         function render() {
             const list = document.getElementById("listDisplay");
             const totalEl = document.getElementById("total");
@@ -482,16 +609,23 @@
                     total += Number(i.price) || 0;
 
                     list.innerHTML += `
-                        <div class="item tracker-item">
-                            <div>
-                                <strong>${i.name}</strong> - $${i.price} (${i.category})
+                        <div class="item-card">
+                            <div class="top-row">
+                                <span class="item-name">${capitalize(i.name)}</span>
+                                <span class="item-price">$${i.price}</span>
+                            </div>
+                            <div class="bottom-row">
+                                ${i.category} • Expires ${formatDate(i.expiration)}
                             </div>
                         </div>
                     `;
                 } else {
                     list.innerHTML += `
-                        <div class="item tracker-item" style="opacity:0.5">
-                            <div><s>${i.name}</s> (Out of stock)</div>
+                        <div class="item-card" style="opacity:0.5">
+                            <div class="top-row">
+                                <span class="item-name"><s>${capitalize(i.name)}</s></span>
+                            </div>
+                            <div class="bottom-row">(Out of stock)</div>
                         </div>
                     `;
                 }
@@ -511,6 +645,10 @@
             const tabs = document.querySelectorAll(".tab");
             tabs.forEach(tab => tab.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
+
+            const buttons = document.querySelectorAll(".bottom-nav button");
+            buttons.forEach(btn => btn.classList.remove("active"));
+            document.getElementById("tab-" + tabName).classList.add("active");
         }
 
         // ---------------- SHOPPING LIST RENDER ----------------
@@ -562,6 +700,5 @@
             await loadItems();
         };
     </script>
-
 </body>
 </html>
