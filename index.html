@@ -39,6 +39,15 @@
             margin: 6px 0;
             width: 100%;
             font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .modal-content input,
+        .modal-content button,
+        .modal-content select {
+            padding: 10px;
+            margin: 6px 0;
+            font-size: 14px;
         }
 
         .item {
@@ -455,6 +464,7 @@
                 .update({ instock: false })
                 .eq("name", name);
 
+            removeFromList(name);
             showAlert(`✓ "${name}" marked as ran out`);
             await loadItems();
         }
@@ -514,7 +524,6 @@
                     <div class="item" style="${itemObj.isDuplicate ? 'background: #ffcccc; border-left: 4px solid red;' : ''}">
                         <div>${itemObj.name}</div>
                         <div style="display: flex; gap: 6px;">
-                            ${itemObj.isDuplicate ? '' : `<button onclick="markRanOut('${itemObj.name}')">Ran Out</button>`}
                             <button onclick="removeFromList('${itemObj.name}')">Remove</button>
                         </div>
                     </div>
