@@ -505,14 +505,12 @@
                     })
                 });
 
-                // ✅ Check HTTP errors first
                 if (!res.ok) {
                     const errText = await res.text();
                     console.error("HTTP ERROR:", res.status, errText);
                     throw new Error(`Server error ${res.status}`);
                 }
 
-                // ✅ Safe parsing (VERY IMPORTANT)
                 const rawText = await res.text();
 
                 let data;
@@ -523,43 +521,23 @@
                     throw new Error("Invalid JSON from server");
                 }
 
-                console.log("Full Gemini response:", data);
-
-                // ✅ Validate structure
-                if (data.promptFeedback?.blockReason) {
-                    throw new Error(`Content blocked: ${data.promptFeedback.blockReason}`);
-                }
-
                 if (!data.candidates || !data.candidates[0]) {
                     throw new Error("No candidates in response");
                 }
 
                 const candidate = data.candidates[0];
-
-                if (candidate.finishReason !== "STOP") {
-                    throw new Error(`Unexpected finish reason: ${candidate.finishReason}`);
-                }
-
                 let text = candidate.content?.parts?.[0]?.text;
 
                 if (!text) {
-                    console.error("Candidate structure:", candidate);
                     throw new Error("No text found in response");
                 }
 
-                // ✅ Clean Gemini formatting
                 text = text.replace(/```json|```/g, "").trim();
 
-                let parsed;
-                try {
-                    parsed = JSON.parse(text);
-                } catch (e) {
-                    console.error("Gemini returned bad JSON:", text);
-                    throw new Error("AI returned invalid JSON");
-                }
+                const parsed = JSON.parse(text);
 
                 if (!Array.isArray(parsed)) {
-                    throw new Error("Response is not an array of items");
+                    throw new Error("Response is not an array");
                 }
 
                 return parsed;
@@ -568,7 +546,7 @@
                 console.error("Scan error:", error);
                 throw error;
             }
-
+        }
 
                 // ---------------- IMAGE UPLOAD FLOW ----------------
         async function handleReceiptUpload(file) {
