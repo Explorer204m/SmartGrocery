@@ -101,6 +101,14 @@
             max-width: 400px;
             border-radius: 10px;
         }
+
+        #alertBox {
+            background: #ffcccc;
+            border-left: 4px solid red;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
     
@@ -450,6 +458,23 @@
             renderList();
         }
 
+        async function markRanOut(name) {
+            await supabaseServer
+                .from("items")
+                .insert([{
+                    name: name,
+                    price: 0,
+                    category: "Other",
+                    expiration: null,
+                    instock: false,
+                    createdate: new Date().toISOString()
+                }]);
+
+            removeFromList(name);
+            showAlert(`✓ "${name}" marked as ran out`);
+            await loadItems();
+        }
+
         // ---------------- RENDER ITEMS ----------------
         function render() {
             const list = document.getElementById("listDisplay");
@@ -498,7 +523,10 @@
                 listDiv.innerHTML += `
                     <div class="item" style="${itemObj.isDuplicate ? 'background: #ffcccc; border-left: 4px solid red;' : ''}">
                         <div>${itemObj.name}</div>
-                        <button onclick="removeFromList('${itemObj.name}')">Remove</button>
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="removeFromList('${itemObj.name}')">Remove</button>
+                            <button onclick="markRanOut('${itemObj.name}')">Ran Out</button>
+                        </div>
                     </div>
                 `;
             });
