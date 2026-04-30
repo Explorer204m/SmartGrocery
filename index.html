@@ -94,6 +94,7 @@
             border-left: 4px solid red;
         }
 
+        /* Modal background */
         .modal {
             display: none;
             position: fixed;
@@ -101,14 +102,97 @@
             background: rgba(0,0,0,0.4);
             justify-content: center;
             align-items: center;
+            backdrop-filter: blur(4px);
         }
 
+        /* Modal card */
         .modal-content {
             background: white;
             padding: 20px;
             width: 90%;
             max-width: 400px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            animation: fadeIn 0.2s ease;
+        }
+
+        /* Title */
+        .modal-title {
+            margin-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Form layout */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        /* Inputs */
+        .form-group input,
+        .form-group select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 2px rgba(46,125,50,0.15);
+        }
+
+        /* Buttons layout */
+        .modal-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Cancel button */
+        .cancel-btn {
+            flex: 1;
+            background: #eee;
+            border: none;
             border-radius: 10px;
+            padding: 10px;
+        }
+
+        /* Add button */
+        .add-btn {
+            flex: 1;
+            background: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px;
+            font-weight: 600;
+        }
+
+        /* Hover/press */
+        .add-btn:active {
+            transform: scale(0.97);
+        }
+
+        .cancel-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         #alertBox {
@@ -149,6 +233,7 @@
             font-size: 13px;
             color: #777;
         }
+
 
         .bottom-nav {
             position: fixed;
@@ -224,31 +309,101 @@
         #receiptInput {
             display: none;
         }
+
+        #fab {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+
+            background: #2e7d32;
+            color: white;
+            border: none;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 28px;
+
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+
+            transition: all 0.25s ease;
+        }
+
+        /* EXPANDED (manual mode) */
+        #fab.fab-expanded {
+            width: 160px;
+            height: 52px;
+            border-radius: 14px;
+
+            justify-content: center;
+            gap: 6px;
+
+            font-size: 16px;
+        }
+
+        #fab:hover {
+            transform: scale(1.05);
+        }
+
+        #fab:active {
+            transform: scale(0.92);
+        }
+
     </style>
 </head>
     
 <body>
 
     <h2>Cartly</h2>
-
+    <button id="fab" onclick="openAddPopup('manual')">
+        <span>+</span>
+        <span id="fabText" style="display:none; font-size:14px; margin-left:8px;">
+            Add
+        </span>
+    </button>
     <div id="alertBox"></div>
 
     <div id="addModal" class="modal">
         <div class="modal-content">
-            <h3>Add Item</h3>
+            <h3 class="modal-title">
+                Add Item
+                <span id="modeLabel" style="font-size:12px; color:#999;"></span>
+            </h3>
 
-            <input id="modalName" placeholder="Item name">
-            <input id="modalPrice" type="number" placeholder="Price">
+            <div class="form-group">
+                <label>Name</label>
+                <input id="modalName" placeholder="e.g. Milk">
+            </div>
 
-            <select id="modalCategory">
-                <option>Groceries</option>
-                <option>Snacks</option>
-                <option>Other</option>
-            </select>
+            <div class="form-group">
+                <label>Price</label>
+                <input id="modalPrice" type="number" placeholder="0.00">
+            </div>
 
-            <input id="modalExpiration" type="date">
-            <button onclick="submitModalItem()">Add</button>
-            <button onclick="closeAddPopup()">Cancel</button>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="modalCategory">
+                    <option>Groceries</option>
+                    <option>Snacks</option>
+                    <option>Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Expiration</label>
+                <input id="modalExpiration" type="date">
+            </div>
+
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeAddPopup()">Cancel</button>
+                <button class="add-btn" onclick="submitModalItem()">Add Item</button>
+            </div>
         </div>
     </div>
 
@@ -260,8 +415,6 @@
             </div>
             <input id="receiptInput" type="file" accept="image/*" capture="environment" onchange="handleReceiptUpload(this.files[0])">
         </label>
-
-        <button onclick="openAddPopup()">✏️ Add Manual</button>
 
         <h3>Items</h3>
         <div id="listDisplay"></div>
@@ -303,6 +456,7 @@
         let shoppingList = [];
         let chartInstance = null;
         let categories = [];
+        let addMode = "scan"; // or "manual"
 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mY296bWZoYnlmanR5ZXJlcWdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MTk2OTcsImV4cCI6MjA5Mjk5NTY5N30.wY9WR1fpWSIt_ad9Zs_XzAcKB7cCROVIt7ZJTD6Lgv0";
         const supabaseServer = supabase.createClient(
@@ -405,36 +559,39 @@
 
                 // ---------------- IMAGE UPLOAD FLOW ----------------
         async function handleReceiptUpload(file) {
-            try {
-                if (!file) {
-                    showAlert("No file selected");
-                    return;
+
+            // 🚨 BLOCK SCAN IF USER IS IN MANUAL MODE
+            if (addMode === "manual") return;
+                try {
+                    if (!file) {
+                        showAlert("No file selected");
+                        return;
+                    }
+
+                    showAlert("Processing receipt...");
+                    
+                    const compressed = await compressImage(file);
+                    const base64 = await toBase64(compressed);
+
+                    const extractedItems = await scanReceipt(base64);
+
+                    const cleaned = extractedItems.map(i => ({
+                        name: i.name || "Unknown",
+                        price: Number(i.price) || 0,
+                        category: i.category || "Other",
+                        expiration: i.expiration || null,
+                        instock: true,
+                        createdate: new Date().toISOString()
+                    }));
+
+                    await supabaseServer.from("items").insert(cleaned);
+
+                    await loadItems();
+                    showAlert("Receipt added successfully!");
+                } catch (error) {
+                    console.error("Receipt upload error:", error);
+                    showAlert("Error: " + error.message);
                 }
-
-                showAlert("Processing receipt...");
-                
-                const compressed = await compressImage(file);
-                const base64 = await toBase64(compressed);
-
-                const extractedItems = await scanReceipt(base64);
-
-                const cleaned = extractedItems.map(i => ({
-                    name: i.name || "Unknown",
-                    price: Number(i.price) || 0,
-                    category: i.category || "Other",
-                    expiration: i.expiration || null,
-                    instock: true,
-                    createdate: new Date().toISOString()
-                }));
-
-                await supabaseServer.from("items").insert(cleaned);
-
-                await loadItems();
-                showAlert("Receipt added successfully!");
-            } catch (error) {
-                console.error("Receipt upload error:", error);
-                showAlert("Error: " + error.message);
-            }
         }
 
         // ---------------- BASE64 ----------------
@@ -581,7 +738,6 @@
                 .update({ instock: false })
                 .eq("name", name);
 
-            removeFromList(name);
             showAlert(`✓ "${name}" marked as ran out`);
             await loadItems();
         }
@@ -635,9 +791,31 @@
             renderChart();
         }
 
-        function openAddPopup() {
+        function openAddPopup(mode = "scan") {
+            addMode = mode;
+
+            const fab = document.getElementById("fab");
+            const text = document.getElementById("fabText");
+
+            // open modal
             document.getElementById("addModal").style.display = "flex";
+
+            // visual change
+            if (mode === "manual") {
+                fab.classList.add("fab-expanded");
+                if (text) text.style.display = "block";
+            } else {
+                fab.classList.remove("fab-expanded");
+                if (text) text.style.display = "none";
+            }
+
+            // optional label update
+            const label = document.getElementById("modeLabel");
+            if (label) {
+                label.innerText = mode === "manual" ? "Manual Entry" : "Scan Mode";
+            }
         }
+
         function closeAddPopup() {
             document.getElementById("addModal").style.display = "none";
         }
@@ -657,12 +835,23 @@
             listDiv.innerHTML = "";
 
             shoppingList.forEach(item => {
-                const itemObj = typeof item === 'string' ? { name: item, isDuplicate: false } : item;
+                const itemObj = typeof item === 'string'
+                    ? { name: item, isDuplicate: false }
+                    : item;
+
                 listDiv.innerHTML += `
-                    <div class="item" style="${itemObj.isDuplicate ? 'background: #ffcccc; border-left: 4px solid red;' : ''}">
-                        <div>${itemObj.name}</div>
-                        <div style="display: flex; gap: 6px;">
+                    <div class="item-card" style="${itemObj.isDuplicate ? 'border-left: 4px solid red;' : ''}">
+                        <div class="top-row">
+                            <span class="item-name">${capitalize(itemObj.name)}</span>
+                        </div>
+
+                        <div class="bottom-row">
+                            ${itemObj.isDuplicate ? "⚠️ Already in pantry" : "Shopping item"}
+                        </div>
+
+                        <div style="margin-top:8px; display:flex; gap:6px;">
                             <button onclick="removeFromList('${itemObj.name}')">Remove</button>
+                            <button onclick="markRanOut('${itemObj.name}')">Ran Out</button>
                         </div>
                     </div>
                 `;
@@ -694,6 +883,24 @@
                 }
             });
         }
+
+
+        // ---------------- SCROLL FADE FAB ----------------
+        window.addEventListener("scroll", () => {
+            const fab = document.getElementById("fab");
+            const fadeStart = 50;
+            const fadeEnd = 200;
+
+            const scrollY = window.scrollY;
+
+            if (scrollY < fadeStart) {
+                fab.style.opacity = 1;
+            } else if (scrollY > fadeEnd) {
+                fab.style.opacity = 0;
+            } else {
+                fab.style.opacity = 1 - (scrollY - fadeStart) / (fadeEnd - fadeStart);
+            }
+        });
 
         // ---------------- INIT (FIXED) ----------------
         window.onload = async () => {
