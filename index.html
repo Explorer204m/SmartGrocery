@@ -306,6 +306,12 @@
             transform: scale(0.98);
         }
 
+        .file-input-label.scanning {
+            background: #e8f5e9;
+            border-color: #1b5e20;
+            color: #1b5e20;
+        }
+
         #receiptInput {
             display: none;
         }
@@ -410,7 +416,7 @@
     <!-- TRACKER -->
     <div id="tracker" class="tab active">
         <label class="file-input-wrapper">
-            <div class="file-input-label">
+            <div class="file-input-label" id="scanLabel">
                 📸 Tap to take photo or upload receipt
             </div>
             <input id="receiptInput" type="file" accept="image/*" capture="environment" onchange="handleReceiptUpload(this.files[0])">
@@ -452,11 +458,13 @@
     </div>
 
     <script>
+        // ---------------- VARIABLES ----------------
         let items = [];
         let shoppingList = [];
         let chartInstance = null;
         let categories = [];
         let addMode = "scan"; // or "manual"
+        let scanInterval = null;
 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mY296bWZoYnlmanR5ZXJlcWdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MTk2OTcsImV4cCI6MjA5Mjk5NTY5N30.wY9WR1fpWSIt_ad9Zs_XzAcKB7cCROVIt7ZJTD6Lgv0";
         const supabaseServer = supabase.createClient(
@@ -473,6 +481,28 @@
             setTimeout(() => {
                 box.style.display = "none";
             }, 3000);
+        }
+
+        function startScanAnimation() {
+            const label = document.getElementById("scanLabel");
+            let dots = 0;
+
+            label.classList.add("scanning");
+
+            scanInterval = setInterval(() => {
+                dots = (dots + 1) % 3;
+                label.innerText = "🔍 Scanning" + ".".repeat(dots + 1);
+            }, 400);
+        }
+
+        function stopScanAnimation() {
+            const label = document.getElementById("scanLabel");
+
+            clearInterval(scanInterval);
+            scanInterval = null;
+
+            label.classList.remove("scanning");
+            label.innerText = "📸 Tap to take photo or upload receipt";
         }
 
         // ---------------- LOAD ITEMS ----------------
@@ -559,6 +589,7 @@
                         return;
                     }
 
+                    startScanAnimation();
                     showAlert("Processing receipt...");
                     
                     const compressed = await compressImage(file);
@@ -578,10 +609,12 @@
                     await supabaseServer.from("items").insert(cleaned);
 
                     await loadItems();
+                    stopScanAnimation();
                     showAlert("Receipt added successfully!");
                 } catch (error) {
-                    console.error("Receipt upload error:", error);
-                    showAlert("Error: " + error.message);
+                        console.error("Receipt upload error:", error);
+                        stopScanAnimation();
+                        showAlert("Error: " + error.message);
                 }
         }
 
@@ -759,7 +792,7 @@
                         <div class="item-card">
                             <div class="top-row">
                                 <span class="item-name">${capitalize(i.name)}</span>
-                                <span class="item-price">$${i.price}</span>
+                                <span class="item-price">$${Number(i.price).toFixed(2)}</span>
                             </div>
                             <div class="bottom-row">
                                 ${i.category} • Expires ${formatDate(i.expiration)}
