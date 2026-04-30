@@ -209,36 +209,43 @@
             // cancel request after 15 seconds
             setTimeout(() => controller.abort(), 15000);
 
-            const res = await fetch("https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "apikey": SUPABASE_ANON_KEY,
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-                },
-                body: JSON.stringify({
-                    imageBase64: imageBase64
-                })
-            });
+            try {
+                const res = await fetch("https://mfcozmfhbyfjtyereqgg.functions.supabase.co/gemini-scan", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify({
+                        imageBase64: imageBase64
+                    }),
+                    signal: controller.signal
+                });
 
-            if (!res.ok) {
-                const text = await res.text();
-                console.error("Edge Function error:", text);
-                throw new Error("Scan failed");
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error("Edge Function error:", text);
+                    console.error("Status:", res.status);
+                    throw new Error(`API Error ${res.status}: ${text}`);
+                }
+
+                const data = await res.json();
+                console.log("Gemini response:", data);
+
+                let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!text) {
+                    throw new Error("No text in Gemini response");
+                }
+
+                text = text.replace(/```json|```/g, "").trim();
+
+                return JSON.parse(text);
+            } catch (error) {
+                console.error("Scan error:", error);
+                throw error;
             }
-
-            const data = await res.json();
-            console.log("Gemini RAW:", data);
-
-            let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!text) {
-                throw new Error("Invalid Gemini response");
-            }
-
-            text = text.replace(/```json|```/g, "").trim();
-
-            return JSON.parse(text);
         }
 
                 // ---------------- IMAGE UPLOAD FLOW ----------------
@@ -395,16 +402,17 @@
             );
 
             if (existingItem) {
-                showAlert(`"${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
-                return;
+                showAlert(`⚠️ "${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
+                shoppingList.push({ name, isDuplicate: true });
+            } else {
+                shoppingList.push({ name, isDuplicate: false });
             }
 
-            shoppingList.push(name);
             renderList();
         }
 
         async function removeFromList(name) {
-            shoppingList = shoppingList.filter(i => i.toLowerCase() !== name.toLowerCase());
+            shoppingList = shoppingList.filter(i => i.name.toLowerCase() !== name.toLowerCase());
             renderList();
         }
 
@@ -424,7 +432,6 @@
                         <div class="item tracker-item">
                             <div>
                                 <strong>${i.name}</strong> - $${i.price} (${i.category})
-                                ${i.expiration ? `<br><small>Expires: ${i.expiration}</small>` : ""}
                             </div>
                         </div>
                     `;
@@ -453,10 +460,11 @@
             listDiv.innerHTML = "";
 
             shoppingList.forEach(item => {
+                const itemObj = typeof item === 'string' ? { name: item, isDuplicate: false } : item;
                 listDiv.innerHTML += `
-                    <div class="item">
-                        <div>${item}</div>
-                        <button onclick="removeFromList('${item}')">Remove</button>
+                    <div class="item" style="${itemObj.isDuplicate ? 'background: #ffcccc; border-left: 4px solid red;' : ''}">
+                        <div>${itemObj.name}</div>
+                        <button onclick="removeFromList('${itemObj.name}')">Remove</button>
                     </div>
                 `;
             });
