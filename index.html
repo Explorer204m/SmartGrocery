@@ -204,6 +204,15 @@
             margin-bottom: 10px;
         }
 
+        #SuccessBox {
+            display: none;
+            background: rgb(212, 255, 204); 
+            border-left: 4px solid #2e7d32;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
         .item-card {
             background: white;
             padding: 12px;
@@ -590,7 +599,6 @@
                     }
 
                     startScanAnimation();
-                    showAlert("Processing receipt...");
                     
                     const compressed = await compressImage(file);
                     const base64 = await toBase64(compressed);
