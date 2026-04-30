@@ -283,14 +283,28 @@
 
                 const extractedItems = await scanReceipt(base64);
 
-                const cleaned = extractedItems.map(i => ({
-                    name: i.name || "Unknown",
-                    price: Number(i.price) || 0,
-                    category: i.category || "Other",
-                    expiration: i.expiration || null,
-                    instock: true,
-                    createdate: new Date().toISOString()
-                }));
+                const cleaned = extractedItems.map(i => {
+                    // Convert expiration text to date
+                    let expirationDate = null;
+                    if (i.expiration) {
+                        const match = i.expiration.match(/(\d+)\s*days?/i);
+                        if (match) {
+                            const days = parseInt(match[1]);
+                            const date = new Date();
+                            date.setDate(date.getDate() + days);
+                            expirationDate = date.toISOString().split('T')[0];
+                        }
+                    }
+
+                    return {
+                        name: i.name || "Unknown",
+                        price: Number(i.price) || 0,
+                        category: i.category || "Other",
+                        expiration: expirationDate,
+                        instock: true,
+                        createdate: new Date().toISOString()
+                    };
+                });
 
                 await supabaseServer.from("items").insert(cleaned);
 
