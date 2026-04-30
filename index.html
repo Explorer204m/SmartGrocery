@@ -103,6 +103,7 @@
         }
 
         #alertBox {
+            display: none;
             background: #ffcccc;
             border-left: 4px solid red;
             padding: 12px;
@@ -444,35 +445,38 @@
             );
 
             if (existingItem) {
-                showAlert(`⚠️ "${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
-                shoppingList.push({ name, isDuplicate: true });
+                showAlert(`"${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
+                shoppingList.push(name);
             } else {
-                shoppingList.push({ name, isDuplicate: false });
+                shoppingList.push(name);
             }
 
             renderList();
         }
 
         async function removeFromList(name) {
-            shoppingList = shoppingList.filter(i => i.name.toLowerCase() !== name.toLowerCase());
+            shoppingList = shoppingList.filter(i => {
+                const itemName = typeof i === "string" ? i : i.name;
+                return itemName.toLowerCase() !== name.toLowerCase();
+            });
+
             renderList();
         }
 
         async function markRanOut(name) {
             await supabaseServer
                 .from("items")
-                .insert([{
-                    name: name,
-                    price: 0,
-                    category: "Other",
-                    expiration: null,
-                    instock: false,
-                    createdate: new Date().toISOString()
-                }]);
+                .update({ instock: false })
+                .eq("name", name);
 
-            removeFromList(name);
+            shoppingList = shoppingList.filter(i => {
+                const itemName = typeof i === "string" ? i : i.name;
+                return itemName.toLowerCase() !== name.toLowerCase();
+            });
+
             showAlert(`✓ "${name}" marked as ran out`);
             await loadItems();
+            renderList();
         }
 
         // ---------------- RENDER ITEMS ----------------
