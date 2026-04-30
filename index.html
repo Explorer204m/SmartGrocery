@@ -383,6 +383,7 @@
         </span>
     </button>
     <div id="alertBox"></div>
+    <div id="SuccessBox"></div>
 
     <div id="addModal" class="modal">
         <div class="modal-content">
@@ -484,6 +485,16 @@
         // ---------------- ALERT ----------------
         function showAlert(msg) {
             const box = document.getElementById("alertBox");
+            box.innerText = msg;
+            box.style.display = "block";
+
+            setTimeout(() => {
+                box.style.display = "none";
+            }, 3000);
+        }
+
+        function showSuccess(msg) {
+            const box = document.getElementById("SuccessBox");
             box.innerText = msg;
             box.style.display = "block";
 
@@ -618,7 +629,7 @@
 
                     await loadItems();
                     stopScanAnimation();
-                    showAlert("Receipt added successfully!");
+                    showSuccess("Receipt added successfully!");
                 } catch (error) {
                         console.error("Receipt upload error:", error);
                         stopScanAnimation();
@@ -770,7 +781,7 @@
                 .update({ instock: false })
                 .eq("name", name);
 
-            showAlert(`✓ "${name}" marked as ran out`);
+            showSuccess(`✓ "${name}" marked as ran out`);
             await loadItems();
         }
 
