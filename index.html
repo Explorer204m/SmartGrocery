@@ -1063,11 +1063,47 @@
 
                         <div style="margin-top:8px; display:flex; gap:6px;">
                             <button onclick="removeFromList('${itemObj.name}')">Remove</button>
-                            <button onclick="markRanOut('${itemObj.id || ""}')">Ran Out</button>
+
+                            ${itemObj.isDuplicate && itemObj.id ? `
+                                <button onclick="handleRanOut('${itemObj.id}', '${itemObj.name}')">
+                                    Ran Out
+                                </button>
+                            ` : ""}
                         </div>
                     </div>
                 `;
             });
+        }
+
+        async function handleRanOut(id, name) {
+            if (!id) return;
+
+            const { error } = await supabaseServer
+                .from("items")
+                .update({ instock: false })
+                .eq("id", id);
+
+            if (error) {
+                console.error(error);
+                showAlert("Failed to update item");
+                return;
+            }
+
+            shoppingList = shoppingList.map(item => {
+                if (item.name === name) {
+                    return {
+                        ...item,
+                        isDuplicate: false,
+                        id: null
+                    };
+                }
+                return item;
+            });
+
+            showSuccess(`"${name}" marked as ran out`);
+
+            await loadItems();
+            renderList(); // refresh UI
         }
 
         // ---------------- CHART ----------------
