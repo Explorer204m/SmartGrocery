@@ -876,12 +876,22 @@
             );
 
             if (existingItem) {
-                showAlert(`"${existingItem.name}" already purchased! Expires: ${existingItem.expiration || "No expiration"}`);
-                shoppingList.push({ name, isDuplicate: true });
-            } else {
-                shoppingList.push({ name, isDuplicate: false });
-            }
+                showAlert(`"${existingItem.name}" already purchased!`);
 
+                shoppingList.push({
+                    name,
+                    isDuplicate: true,
+                    id: existingItem.id   // ✅ HERE
+                });
+
+            } else {
+                shoppingList.push({
+                    name,
+                    isDuplicate: false,
+                    id: null              // ✅ HERE
+                });
+            }
+            
             renderList();
         }
 
@@ -895,19 +905,23 @@
         }
 
         async function markRanOut(id) {
+            if (!id) {
+                showAlert("Item not linked to pantry");
+                return;
+            }
+
             const { error } = await supabaseServer
                 .from("items")
                 .update({ instock: false })
                 .eq("id", id);
 
             if (error) {
-                console.error("Update failed:", error);
+                console.error(error);
                 showAlert("Failed to update item");
                 return;
             }
 
             showSuccess("Marked as ran out");
-            console.log("Updating item:", name);
             await loadItems();
         }
 
@@ -1040,7 +1054,7 @@
 
                         <div style="margin-top:8px; display:flex; gap:6px;">
                             <button onclick="removeFromList('${itemObj.name}')">Remove</button>
-                            <button onclick="markRanOut('${i.id}')">Ran Out</button>
+                            <button onclick="markRanOut('${itemObj.id || ""}')">Ran Out</button>
                         </div>
                     </div>
                 `;
