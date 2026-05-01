@@ -408,6 +408,12 @@
                 <select id="modalCategory">
                     <option>Groceries</option>
                     <option>Snacks</option>
+                    <option>Drinks</option>
+                    <option>Household</option>
+                    <option>Personal Care</option>
+                    <option>Electronics</option>
+                    <option>Fast Food</option>
+                    <option>Restaurants</option>
                     <option>Other</option>
                 </select>
             </div>
@@ -440,8 +446,47 @@
     </div>
 
     <!-- GRAPH -->
-    <div id="graph" class="tab">
-        <canvas id="chart"></canvas>
+    <div id="insight" class="tab">
+        <h3>💸 Category Limits</h3>
+
+        <select id="limitCategory">
+            <option>Groceries</option>
+            <option>Snacks</option>
+            <option>Electronics</option>
+            <option>Fast Food</option>
+            <option>Restaurants</option>
+            <option>Other</option>
+        </select>
+
+        <input id="limitAmount" type="number" placeholder="Set monthly limit ($)">
+
+        <button onclick="saveLimit()">Save Limit</button>
+
+        <p id="currentLimit"></p>
+
+        <h3>📊 Spending Over Time</h3>
+
+        <select id="timeRange">
+            <option value="7">1 Week</option>
+            <option value="30">1 Month</option>
+            <option value="180">6 Months</option>
+            <option value="365">1 Year</option>
+        </select>
+
+        <select id="filterCategory">
+            <option value="all">All Categories</option>
+            <option>Groceries</option>
+            <option>Snacks</option>
+            <option>Electronics</option>
+            <option>Fast Food</option>
+            <option>Restaurants</option>
+        </select>
+
+        <input id="filterItem" placeholder="Filter by item name (optional)">
+
+        <button onclick="renderTimeGraph()">Apply Filters</button>
+
+        <canvas id="timeChart"></canvas>
     </div>
 
     <!-- SHOPPING LIST -->
@@ -458,9 +503,9 @@
             📦
             <span>Tracker</span>
         </button>
-        <button onclick="showTab('graph')" id="tab-graph">
+        <button onclick="showTab('insight')" id="tab-insight">
             📊
-            <span>Graph</span>
+            <span>Insights</span>
         </button>
         <button onclick="showTab('list')" id="tab-list">
             🛒
@@ -476,6 +521,7 @@
         let categories = [];
         let addMode = "scan"; // or "manual"
         let scanInterval = null;
+        let categoryLimits = {};
 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mY296bWZoYnlmanR5ZXJlcWdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MTk2OTcsImV4cCI6MjA5Mjk5NTY5N30.wY9WR1fpWSIt_ad9Zs_XzAcKB7cCROVIt7ZJTD6Lgv0";
         const supabaseServer = supabase.createClient(
@@ -682,6 +728,32 @@
             });
         }
 
+        // ---------------- INSIGHTS ----------------
+        function saveLimit() {
+            const category = document.getElementById("limitCategory").value;
+            const amount = parseFloat(document.getElementById("limitAmount").value);
+
+            if (isNaN(amount)) {
+                showAlert("Enter valid amount");
+                return;
+            }
+
+            categoryLimits[category] = amount;
+
+            localStorage.setItem("categoryLimits", JSON.stringify(categoryLimits));
+
+            showSuccess(`Limit set for ${category}: $${amount}`);
+            updateCurrentLimit();
+        }
+
+        function updateCurrentLimit() {
+            const category = document.getElementById("limitCategory").value;
+            const limit = categoryLimits[category];
+
+            document.getElementById("currentLimit").innerText =
+                limit ? `Current limit: $${limit}` : "No limit set";
+        }
+
         // ---------------- ADD ITEM ----------------
         async function addItem(item) {
             const { data, error } = await supabaseServer
@@ -829,6 +901,18 @@
                         </div>
                     `;
                 }
+
+                for (let category in categoryTotals) {
+                    const total = categoryTotals[category];
+                    const limit = categoryLimits[category];
+
+                    if (limit && total > limit) {
+                        showAlert(`⚠️ ${category} exceeded limit ($${total.toFixed(2)} / $${limit})`);
+                    }
+                }
+
+                totalEl.innerText = total.toFixed(2);
+                renderChart();
             });
 
             totalEl.innerText = total.toFixed(2);
@@ -871,6 +955,10 @@
             const buttons = document.querySelectorAll(".bottom-nav button");
             buttons.forEach(btn => btn.classList.remove("active"));
             document.getElementById("tab-" + tabName).classList.add("active");
+
+            if (tabName === "insights") {
+                updateInsights();
+}
         }
 
         // ---------------- SHOPPING LIST RENDER ----------------
@@ -903,31 +991,52 @@
         }
 
         // ---------------- CHART ----------------
-        function renderChart() {
-            const ctx = document.getElementById("chart").getContext("2d");
+        function renderTimeGraph() {
+            const days = parseInt(document.getElementById("timeRange").value);
+            const categoryFilter = document.getElementById("filterCategory").value;
+            const itemFilter = document.getElementById("filterItem").value.toLowerCase();
 
-            const totals = {};
+            const now = new Date();
+            const past = new Date();
+            past.setDate(now.getDate() - days);
 
-            items.forEach(i => {
-                if (i.instock) {
-                    totals[i.category] = (totals[i.category] || 0) + Number(i.price);
-                }
+            const filtered = items.filter(i => {
+                const date = new Date(i.createdate);
+
+                return (
+                    date >= past &&
+                    (categoryFilter === "all" || i.category === categoryFilter) &&
+                    (!itemFilter || i.name.toLowerCase().includes(itemFilter))
+                );
             });
 
-            if (window.chartInstance) window.chartInstance.destroy();
+            // Group by day
+            const totals = {};
 
-            window.chartInstance = new Chart(ctx, {
-                type: "bar",
+            filtered.forEach(i => {
+                const date = new Date(i.createdate).toISOString().split("T")[0];
+
+                totals[date] = (totals[date] || 0) + Number(i.price);
+            });
+
+            const labels = Object.keys(totals).sort();
+            const data = labels.map(d => totals[d]);
+
+            const ctx = document.getElementById("timeChart").getContext("2d");
+
+            if (window.timeChartInstance) window.timeChartInstance.destroy();
+
+            window.timeChartInstance = new Chart(ctx, {
+                type: "line",
                 data: {
-                    labels: Object.keys(totals),
+                    labels,
                     datasets: [{
                         label: "Spending",
-                        data: Object.values(totals)
+                        data
                     }]
                 }
             });
         }
-
 
         // ---------------- SCROLL FADE FAB ----------------
         window.addEventListener("scroll", () => {
@@ -949,6 +1058,10 @@
         // ---------------- INIT (FIXED) ----------------
         window.onload = async () => {
             await loadItems();
+
+            document.getElementById("timeFilter").addEventListener("change", updateInsights);
+            document.getElementById("categoryFilter").addEventListener("change", updateInsights);
+            document.getElementById("itemSearch").addEventListener("input", updateInsights);
         };
     </script>
 </body>
