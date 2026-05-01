@@ -876,9 +876,16 @@
             list.innerHTML = "";
             let total = 0;
 
+            // ✅ CREATE categoryTotals HERE
+            const categoryTotals = {};
+
             items.forEach(i => {
                 if (i.instock) {
                     total += Number(i.price) || 0;
+
+                    // ✅ accumulate per category
+                    const cat = i.category || "Other";
+                    categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(i.price);
 
                     list.innerHTML += `
                         <div class="item-card">
@@ -901,22 +908,19 @@
                         </div>
                     `;
                 }
-
-                for (let category in categoryTotals) {
-                    const total = categoryTotals[category];
-                    const limit = categoryLimits[category];
-
-                    if (limit && total > limit) {
-                        showAlert(`⚠️ ${category} exceeded limit ($${total.toFixed(2)} / $${limit})`);
-                    }
-                }
-
-                totalEl.innerText = total.toFixed(2);
-                renderChart();
             });
 
+            // ✅ CHECK LIMITS AFTER LOOP
+            for (let category in categoryTotals) {
+                const total = categoryTotals[category];
+                const limit = categoryLimits[category];
+
+                if (limit && total > limit) {
+                    showAlert(`⚠️ ${category} exceeded limit ($${total.toFixed(2)} / $${limit})`);
+                }
+            }
+
             totalEl.innerText = total.toFixed(2);
-            renderChart();
         }
 
         function openAddPopup(mode = "scan") {
