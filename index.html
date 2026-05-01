@@ -800,6 +800,24 @@
             }
         }
 
+        function renderLimits() {
+            const container = document.getElementById("limitsList");
+            container.innerHTML = "";
+
+            for (let category in categoryLimits) {
+                const amount = categoryLimits[category];
+
+                container.innerHTML += `
+                    <div class="item-card">
+                        <div class="top-row">
+                            <span class="item-name">${category}</span>
+                            <span class="item-price">$${amount}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         // ---------------- ADD ITEM ----------------
         async function addItem(item) {
             const { data, error } = await supabaseServer
@@ -891,7 +909,7 @@
                     id: null              // ✅ HERE
                 });
             }
-            
+
             renderList();
         }
 
