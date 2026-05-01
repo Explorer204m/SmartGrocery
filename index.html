@@ -484,8 +484,6 @@
 
         <input id="filterItem" placeholder="Filter by item name (optional)">
 
-        <button onclick="renderTimeGraph()">Apply Filters</button>
-
         <canvas id="timeChart"></canvas>
     </div>
 
@@ -754,6 +752,12 @@
                 limit ? `Current limit: $${limit}` : "No limit set";
         }
 
+        function setupInsightListeners() {
+            document.getElementById("timeRange").addEventListener("change", renderTimeGraph);
+            document.getElementById("filterCategory").addEventListener("change", renderTimeGraph);
+            document.getElementById("filterItem").addEventListener("input", renderTimeGraph);
+        }
+
         // ---------------- ADD ITEM ----------------
         async function addItem(item) {
             const { data, error } = await supabaseServer
@@ -848,13 +852,20 @@
             renderList();
         }
 
-        async function markRanOut(name) {
-            await supabaseServer
+        async function markRanOut(id) {
+            const { error } = await supabaseServer
                 .from("items")
                 .update({ instock: false })
-                .eq("name", name);
+                .eq("id", id);
 
-            showSuccess(`✓ "${name}" marked as ran out`);
+            if (error) {
+                console.error("Update failed:", error);
+                showAlert("Failed to update item");
+                return;
+            }
+
+            showSuccess("Marked as ran out");
+            console.log("Updating item:", name);
             await loadItems();
         }
 
@@ -960,8 +971,10 @@
             buttons.forEach(btn => btn.classList.remove("active"));
             document.getElementById("tab-" + tabName).classList.add("active");
 
-            if (tabName === "insights") {
-                updateInsights();
+            if (tabName === "insight") {
+                renderTimeGraph(); // auto-load graph
+            }
+
 }
         }
 
@@ -987,7 +1000,7 @@
 
                         <div style="margin-top:8px; display:flex; gap:6px;">
                             <button onclick="removeFromList('${itemObj.name}')">Remove</button>
-                            <button onclick="markRanOut('${itemObj.name}')">Ran Out</button>
+                            <button onclick="markRanOut('${i.id}')">Ran Out</button>
                         </div>
                     </div>
                 `;
@@ -1023,10 +1036,12 @@
                 totals[date] = (totals[date] || 0) + Number(i.price);
             });
 
-            const labels = Object.keys(totals).sort();
+            const labels = Object.keys(totals)
+                .sort((a, b) => new Date(a) - new Date(b));
             const data = labels.map(d => totals[d]);
 
             const ctx = document.getElementById("timeChart").getContext("2d");
+            const days = parseInt(document.getElementById("timeRange").value || 7);
 
             if (window.timeChartInstance) window.timeChartInstance.destroy();
 
@@ -1062,14 +1077,7 @@
         // ---------------- INIT (FIXED) ----------------
         window.onload = async () => {
             await loadItems();
-
-            const timeEl = document.getElementById("timeRange");
-            const categoryEl = document.getElementById("filterCategory");
-            const itemEl = document.getElementById("filterItem");
-
-            if (timeEl) timeEl.addEventListener("change", renderTimeGraph);
-            if (categoryEl) categoryEl.addEventListener("change", renderTimeGraph);
-            if (itemEl) itemEl.addEventListener("input", renderTimeGraph);
+            setupInsightListeners();
         };
     </script>
 </body>
