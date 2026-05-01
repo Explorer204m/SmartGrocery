@@ -727,7 +727,7 @@
         }
 
         // ---------------- INSIGHTS ----------------
-        function saveLimit() {
+        async function saveLimit() {
             const category = document.getElementById("limitCategory").value;
             const amount = parseFloat(document.getElementById("limitAmount").value);
 
@@ -736,12 +736,42 @@
                 return;
             }
 
-            categoryLimits[category] = amount;
+            const { error } = await supabaseServer
+                .from("category_limits")
+                .upsert({
+                    category,
+                    limit_amount: amount
+                }, {
+                    onConflict: "category"
+                });
 
-            localStorage.setItem("categoryLimits", JSON.stringify(categoryLimits));
+            if (error) {
+                console.error(error);
+                return;
+            }
 
-            showSuccess(`Limit set for ${category}: $${amount}`);
+            showSuccess(`Limit saved for ${category}`);
+            loadLimits();
+        }
+
+        async function loadLimits() {
+            const { data, error } = await supabaseServer
+                .from("category_limits")
+                .select("*");
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            categoryLimits = {};
+
+            data.forEach(row => {
+                categoryLimits[row.category] = row.limit_amount;
+            });
+
             updateCurrentLimit();
+            renderLimits();
         }
 
         function updateCurrentLimit() {
@@ -756,6 +786,18 @@
             document.getElementById("timeRange").addEventListener("change", renderTimeGraph);
             document.getElementById("filterCategory").addEventListener("change", renderTimeGraph);
             document.getElementById("filterItem").addEventListener("input", renderTimeGraph);
+        }
+
+        async function limitTextUpdate() {
+            const category = document.getElementById("limitCategory").value;
+            const { data, error } = await supabaseServer
+                .from("category_limits")
+                .select("*")
+                .eq("category",  category);
+            const limit = data?.[0]?.limit_amount;
+            if (limit != 0){
+                document.getElementById("limitAmount").placeholder = `Current Limit ${limit}`;
+            }
         }
 
         // ---------------- ADD ITEM ----------------
@@ -1074,6 +1116,7 @@
         // ---------------- INIT (FIXED) ----------------
         window.onload = async () => {
             await loadItems();
+            await loadLimits();
             setupInsightListeners();
         };
     </script>
