@@ -1076,6 +1076,7 @@
         }
 
         async function handleRanOut(id, name) {
+            console.log("Ran out clicked:", id, name);
             if (!id) return;
 
             const { error } = await supabaseServer
