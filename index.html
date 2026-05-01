@@ -1063,9 +1063,13 @@
         window.onload = async () => {
             await loadItems();
 
-            document.getElementById("timeFilter").addEventListener("change", updateInsights);
-            document.getElementById("categoryFilter").addEventListener("change", updateInsights);
-            document.getElementById("itemSearch").addEventListener("input", updateInsights);
+            const timeEl = document.getElementById("timeRange");
+            const categoryEl = document.getElementById("filterCategory");
+            const itemEl = document.getElementById("filterItem");
+
+            if (timeEl) timeEl.addEventListener("change", renderTimeGraph);
+            if (categoryEl) categoryEl.addEventListener("change", renderTimeGraph);
+            if (itemEl) itemEl.addEventListener("input", renderTimeGraph);
         };
     </script>
 </body>
