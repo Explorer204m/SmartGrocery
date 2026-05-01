@@ -974,8 +974,6 @@
             if (tabName === "insight") {
                 renderTimeGraph(); // auto-load graph
             }
-
-}
         }
 
         // ---------------- SHOPPING LIST RENDER ----------------
@@ -1009,7 +1007,7 @@
 
         // ---------------- CHART ----------------
         function renderTimeGraph() {
-            const days = parseInt(document.getElementById("timeRange").value);
+            const days = parseInt(document.getElementById("timeRange").value || 7);
             const categoryFilter = document.getElementById("filterCategory").value;
             const itemFilter = document.getElementById("filterItem").value.toLowerCase();
 
@@ -1041,7 +1039,6 @@
             const data = labels.map(d => totals[d]);
 
             const ctx = document.getElementById("timeChart").getContext("2d");
-            const days = parseInt(document.getElementById("timeRange").value || 7);
 
             if (window.timeChartInstance) window.timeChartInstance.destroy();
 
