@@ -564,7 +564,7 @@
         // ---------------- LOAD ITEMS ----------------
         async function loadItems() {
             const { data, error } = await supabaseServer
-                .from("items")
+                .from("pantry")
                 .select("*");
 
             if (error) {
@@ -661,7 +661,7 @@
                         createdate: new Date().toISOString()
                     }));
 
-                    await supabaseServer.from("items").insert(cleaned);
+                    await supabaseServer.from("pantry").insert(cleaned); // ✅
 
                     await loadItems();
                     stopScanAnimation();
@@ -812,7 +812,7 @@
         // ---------------- ADD ITEM ----------------
         async function addItem(item) {
             const { data, error } = await supabaseServer
-                .from("items")
+                .from("pantry")
                 .insert([{
                     name: item.name,
                     price: item.price,
@@ -861,7 +861,7 @@
         // ---------------- REMOVE / MARK ----------------
         async function markRemoved(name) {
             await supabaseServer
-                .from("items")
+                .from("pantry")
                 .update({ instock: false })
                 .eq("name", name);
 
@@ -1080,7 +1080,7 @@
             if (!id) return;
 
             const { error } = await supabaseServer
-                .from("shopping_list")
+                .from("pantry")
                 .update({ instock: false })
                 .eq("id", id);
 
